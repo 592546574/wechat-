@@ -26,14 +26,14 @@ module.exports= message =>{
             options.title='微信公众号';
             options.description='11/18';
             options.picUrl='https://ss1.baidu.com/6ONXsjip0QIZ8tyhnq/it/u=199783060,2774173244&fm=58&s=188FA15AB1206D1108400056000040F6&bpow=121&bpoh=75';
-            options.url='https://www.baidu.com';
+            options.url='http://www.taobao.com';
         }
     }else  if (message.MsgType === 'voice'){
         //说明用户发送的是语音消息
-        content = `语音识别结果为: ${message.Recognition}`;
+        content = `语音识别结果为:${message.Recognition}`;
     }else if (message.MsgType ==='location'){
         //用户发送位置
-        content = `纬度:${message.Location_X} 经度:${message.Location_Y} 地图的缩放大小:${message.Scale} 位置详情:${message.Label}`;
+        content = `纬度:${message.Location_X} 经度:${message.Location_Y} 地图的缩放大小:${Scale} 位置详情:${Label}`
     }else if (message.MsgType === 'event'){
         if (message.Event ==='subscribe' ) {
             content = '欢迎关注';
@@ -50,7 +50,6 @@ module.exports= message =>{
             content=`用户点击了:${message.EventKey}`;
         }
     }
-    //判断用户发送的消息内容根据内容返回
     options.content=content;
     return options;
 }
