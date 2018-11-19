@@ -8,5 +8,5 @@ app.use(handleRequest());
 //监听端口号
 app.listen(3000,err=>{
     if (!err) console.log('服务器启动成功');
-    else console.log(err)
+    else console.log(err);
 })
