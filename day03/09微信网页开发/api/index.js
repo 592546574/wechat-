@@ -3,6 +3,7 @@ const prefix='https://api.weixin.qq.com/cgi-bin/'
 //所有接口的模块
 module.exports={
     accessToken:`${prefix}token?grant_type=client_credential&`,
+    ticket:`${prefix}ticket/getticket?access_token=ACCESS_TOKEN&type=jsapi`,
     menu: {
        create:`${prefix}menu/create?`,
        delete:`${prefix}menu/delete?`

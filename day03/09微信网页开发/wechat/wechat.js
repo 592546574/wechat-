@@ -2,6 +2,7 @@ const rp = require('request-promise-native');
 const {writeFile,readFile,createReadStream}=require('fs');
 const {appID,appsecret}=require('../config');
 const api=require('../api');
+const {writeFileAsync, readFileAsync} = require('../utils/tools')
 
 //获取定义请求地址https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=APPID&secret=APPSECRET
 class Wechat{
@@ -80,6 +81,68 @@ class Wechat{
                 return Promise.resolve(res);
             })
     }
+
+    //网页获取
+    async getTicket(){
+        const {access_token} = await this.fetchAccessToken();
+        const url = `${api.ticket}access_token=${access_token}`;
+        const result=await rp({method:'GET',url,json:true})
+        //设置access过期时间
+        //返回result
+        return {
+            ticket:result.ticket,
+            ticket_expires_in:Data.now() + 7200000 -300000
+        }
+    }
+    saveTicket (filePath,ticket){
+        return writeFileAsync(filePath,ticket)
+    }
+
+    readTicket(filePath){
+        return readFileAsync(filePath);
+    }
+     //判断是否过期
+    isValidTicket({expires_in}){
+        if (Date.now()>=expires_in){
+            //说明时间过期
+            return false
+        }else {
+            return true
+        }
+    }
+     //封装返回的方法
+    fetchTicket(){
+        if (this.ticket && this.ticket_expires_in && this.isValidTicket(this)){
+            console.log('进来了');
+            //说明access_token是有效的
+            return Promise.resolve({ticket:this.ticket,ticket_expires_in:this.ticket_expires_in})
+        }
+        //最终目的返回有效
+        return this.fetchTicket('./ticket.txt')
+            .then(async res =>{
+                if (this.isValidTicket(res)){
+                    //没有过期
+                    return res;
+                }else {
+                    //过期了
+                    const ticket =await this.getTicket();
+                    await this.saveTicket('./ticket.txt',ticket);
+                    return ticket;
+                }
+            })
+            .catch(async err=>{
+                const ticket =await this.getTicket();
+                await this.saveTicket('./ticket.txt',ticket);
+                return ticket;
+            })
+            .then(res=>{
+                this.ticket=res.ticket;
+                this.ticket_expires_in=res.ticket_expires_in;
+                return Promise.resolve(res);
+            })
+    }
+
+
 
     async createMenu(menu){
         try{
@@ -168,7 +231,7 @@ class Wechat{
                 //请求参数
                 options.body = material;
             }else if (type === 'pic'){
-                url = `${api.upload.uploadimg}access_token=${access_token}`;
+                url = `${api.upload.uploading}access_token=${access_token}`;
                 //以form表单上传
                 options.formData ={
                     media: createReadStream(material)
@@ -193,65 +256,58 @@ class Wechat{
 }
 (async ()=>{
     const w =new Wechat();
-    // msg_id: 1000000001 }let result1 = await w.createTag('zhangzhang');//{ tag: { id: 101, name: 'zhangzhang' } }
-    // //上传图片获取media-id
-    // //{ media_id: 'jDoJzHD2yfW5YxecAG9d8vUYdRG3kJqo3VSGFPmFaEM',
-    // let result1 =await w.uploadMaterial('image','./bg.jpg')
-    // console.log(result1)
-    // // url: 'http://mmbiz.qpic.cn/mmbiz_jpg/YCtxHJGQT9LssPFfHzRf6z1COwFpKRs0o9IuhFFhPaOPNC8u04ANyU4kVC3A8hbyaHPdx7vympB9libd7rwxVuA/0?wx_fmt=jpeg' }
-    //
-    // //上传图片获取地址
-    // //{ url: 'http://mmbiz.qpic.cn/mmbiz_jpg/YCtxHJGQT9LssPFfHzRf6z1COwFpKRs06KzUKDbIRgIAX4X4ibz7B3BmpemMJLVnkVhMxrvenvxvyWQrKOfwfEw/0' }
-    //
-    // let result2 =await w.uploadMaterial('pic','./01.jpg');
-    // console.log(result2);
-    //
-    //
-    //
-    //
-    // //上传图文消息
-    // let result3 = await w.uploadMaterial('news',{
-    //     "articles": [{
-    //     "title": '微信号开发',
-    //     "thumb_media_id": result1.media_id,
-    //     "author": '名',
-    //     "digest":'11/19开发',
-    //     "show_cover_pic": ( 1),
-    //     "content": `<!DOCTYPE html>
-    //                  <html lang="en">
-    //                  <head>
-    //                         <meta charset="UTF-8">
-    //                         <title>Title</title>
-    //                   </head>
-    //                   <body>
-    //                     <h1>微信公众号开发</h1>
-    //                     <img src="${result2.url}">
-    //                   </body>
-    //                   </html>`,
-    //     "content_source_url": 'http://www.taobao.com',
-    //     "need_open_comment":1,
-    //     "only_fans_can_comment":1
-    //     },
-    //         {
-    //             "title": 'class0810',
-    //             "thumb_media_id": result1.media_id,
-    //             "author": '佚名',
-    //             "digest": '课程学了一大半了~马上要毕业了',
-    //             "show_cover_pic": 0,
-    //             "content": '今天天气真晴朗',
-    //             "content_source_url": 'https://www.baidu.com',
-    //             "need_open_comment":0,
-    //             "only_fans_can_comment":0
-    //         }
-    //     ]
-    // });
-    // // { media_id: 'jDoJzHD2yfW5YxecAG9d8tJswvjSHj1kNXr9JHiQXm4' }
+   //  // msg_id: 1000000001 }let result1 = await w.createTag('zhangzhang');//{ tag: { id: 101, name: 'zhangzhang' } }
+   //  //上传图片获取media-id
+   //  let result1 =await w.uploadMaterial('image','./bg.jpg')
+   //  console.log(result1)
+   //  //{ media_id: 'jDoJzHD2yfW5YxecAG9d8ijhBvCQBlynVP3QWXXAMe0',
+   //  //上传图片获取地址
+   //  let result2 =await w.uploadMaterial('pic','./01.jpg');
+   //  console.log(result2);
+   //  //url: 'http://mmbiz.qpic.cn/mmbiz_jpg/YCtxHJGQT9LsG6CRlOxicssBJcmExcoaqQc3JYaTbJkZkRrQEuF3UozXQXy3cZVX0Q3kd5OeqyQDKibciaiaThyiaMA/0?wx_fmt=jpeg' }
+   //  // 进来了
+   //  //上传图文消息
+   //  let result3 = await w.uploadMaterial('news',{
+   //      "articles": [{
+   //      "title": 微信号开发,
+   //      "thumb_media_id": result1.media_id,
+   //      "author": '名',
+   //      "digest":'11/19开发',
+   //      "show_cover_pic": ( 1),
+   //      "content": `<!DOCTYPE html>
+   //                   <html lang="en">
+   //                   <head>
+   //                          <meta charset="UTF-8">
+   //                          <title>Title</title>
+   //                    </head>
+   //                    <body>
+   //                      <h1>微信公众号开发</h1>
+   //                      <img src="${result2.url}">
+   //                    </body>
+   //                    </html>`,
+   //      "content_source_url": 'http://www.taobao.com',
+   //      "need_open_comment":1,
+   //      "only_fans_can_comment":1
+   //      },
+   //          {
+   //              "title": 'class0810',
+   //              "thumb_media_id": result1.media_id,
+   //              "author": '佚名',
+   //              "digest": '课程学了一大半了~马上要毕业了',
+   //              "show_cover_pic": 0,
+   //              "content": '今天天气真晴朗',
+   //              "content_source_url": 'https://www.baidu.com',
+   //              "need_open_comment":0,
+   //              "only_fans_can_comment":0
+   //          }
+   //      ]
+   //  });
+   // console.log(result3)
 
-   console.log(result3)
-
-    // //删除菜单，在重新创建
+    //删除菜单，在重新创建
     // let result =await w.deleteMenu();
     // console.log(result);
     // result = await w.createMenu(requise(`./menu`));
     // console.log(result)
 })()
+module.exports=Wechat
